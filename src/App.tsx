@@ -10,7 +10,11 @@ import {
   Loader2,
   BarChart3,
   PieChart,
-  Target
+  Target,
+  Lightbulb,
+  Zap,
+  Gauge,
+  Flag
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { GoogleGenAI, Type } from '@google/genai';
@@ -40,6 +44,19 @@ interface AnalysisResult {
     total_sales: number;
     acos_percentage: number;
   }[];
+  strategic_analysis?: {
+    market_overview: string;
+    expansion_strategy: {
+      opportunity: string;
+      reasoning: string;
+    }[];
+    bid_recommendations: {
+      cluster: string;
+      action: string;
+      impact: string;
+    }[];
+    long_term_outlook: string;
+  };
   market_trends?: string[];
 }
 
@@ -104,8 +121,8 @@ export default function App() {
       }
       let finalAnalysis = data.analysis;
 
-      // 2. Supplement with AI Insights (Market Trends) if API Key is available
-      const apiKey = process.env.GEMINI_API_KEY;
+      // 2. Supplement with AI Strategic Analysis if API Key is available
+      const apiKey = process.env.Search_Term_Project || process.env.GEMINI_API_KEY;
       if (apiKey && apiKey !== 'MY_GEMINI_API_KEY' && apiKey.trim() !== '') {
         try {
           const genAI = new GoogleGenAI({ apiKey });
@@ -116,12 +133,18 @@ export default function App() {
                 role: 'user',
                 parts: [
                   {
-                    text: `Based on this Amazon Search Term analysis, provide 5 high-level strategic market insights or trends.
+                    text: `As an expert Amazon PPC Strategist, provide a comprehensive strategic analysis based on these search term metrics.
                     
-                    Macro Metrics: ${JSON.stringify(data.analysis.macro_metrics)}
-                    Top Keywords: ${JSON.stringify(data.analysis.high_converting_keywords)}
+                    Macro Performance: ${JSON.stringify(data.analysis.macro_metrics)}
+                    Top Keywords (Winners): ${JSON.stringify(data.analysis.high_converting_keywords)}
+                    Bleeding Keywords: ${JSON.stringify(data.analysis.bleeding_keywords_zero_sales)}
+                    High ACoS Watchlist: ${JSON.stringify(data.analysis.watchlist_high_acos)}
                     
-                    Return ONLY a JSON array of strings: ["insight 1", "insight 2", ...]`
+                    Your goal is to provide deep, actionable insights focusing on:
+                    1. Market Positioning: How does the overall performance reflect brand strength?
+                    2. Expansion: Which winner keywords have untapped potential?
+                    3. Efficiency: Specific bid adjustments for the bleeding and high ACoS terms.
+                    4. Long-term Outlook: What macro-trends should the seller prepare for?`
                   }
                 ]
               }
@@ -129,22 +152,60 @@ export default function App() {
             config: {
               responseMimeType: 'application/json',
               responseSchema: {
-                type: Type.ARRAY,
-                items: { type: Type.STRING }
+                type: Type.OBJECT,
+                properties: {
+                  market_overview: { type: Type.STRING },
+                  expansion_strategy: {
+                    type: Type.ARRAY,
+                    items: {
+                      type: Type.OBJECT,
+                      properties: {
+                        opportunity: { type: Type.STRING },
+                        reasoning: { type: Type.STRING }
+                      },
+                      required: ['opportunity', 'reasoning']
+                    }
+                  },
+                  bid_recommendations: {
+                    type: Type.ARRAY,
+                    items: {
+                      type: Type.OBJECT,
+                      properties: {
+                        cluster: { type: Type.STRING },
+                        action: { type: Type.STRING },
+                        impact: { type: Type.STRING }
+                      },
+                      required: ['cluster', 'action', 'impact']
+                    }
+                  },
+                  long_term_outlook: { type: Type.STRING },
+                  market_trends: {
+                    type: Type.ARRAY,
+                    items: { type: Type.STRING }
+                  }
+                },
+                required: ['market_overview', 'expansion_strategy', 'bid_recommendations', 'long_term_outlook', 'market_trends']
               }
             }
           });
 
-          const textResponse = model.text || '[]';
+          const textResponse = model.text || '{}';
           const cleanedText = textResponse.replace(/^```json\s*/, '').replace(/\s*```$/, '').trim();
-          const trends = JSON.parse(cleanedText);
-          finalAnalysis = { ...finalAnalysis, market_trends: trends };
+          const aiAnalysis = JSON.parse(cleanedText);
+          
+          finalAnalysis = { 
+            ...finalAnalysis, 
+            strategic_analysis: {
+              market_overview: aiAnalysis.market_overview,
+              expansion_strategy: aiAnalysis.expansion_strategy,
+              bid_recommendations: aiAnalysis.bid_recommendations,
+              long_term_outlook: aiAnalysis.long_term_outlook
+            },
+            market_trends: aiAnalysis.market_trends 
+          };
         } catch (aiErr) {
-          console.warn('AI Insights failed:', aiErr);
-          finalAnalysis = { ...finalAnalysis, market_trends: ["Strategic AI insights are temporarily unavailable."] };
+          console.warn('AI Strategic Analysis failed:', aiErr);
         }
-      } else {
-        finalAnalysis = { ...finalAnalysis, market_trends: ["AI Strategic Analysis is disabled. Add a Gemini API key to enable automated insights."] };
       }
 
       setResult({ analysis: finalAnalysis, csvData: data.csvData });
@@ -180,20 +241,6 @@ export default function App() {
             <h1 className="text-xl font-bold tracking-tight">Amazon Search Term Analyzer</h1>
           </div>
           <div className="flex items-center gap-4">
-            <div className={`flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold uppercase transition-all ${
-              process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== 'MY_GEMINI_API_KEY'
-                ? 'bg-green-100 text-green-700'
-                : 'bg-red-100 text-red-700'
-            }`}>
-              <div className={`w-2 h-2 rounded-full ${
-                process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== 'MY_GEMINI_API_KEY'
-                  ? 'bg-green-500'
-                  : 'bg-red-500 animate-pulse'
-              }`} />
-              {process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== 'MY_GEMINI_API_KEY'
-                ? 'Gemini API Key Detected'
-                : 'API Key Missing'}
-            </div>
             {result && (
               <button
                 onClick={downloadCsv}
@@ -420,7 +467,89 @@ export default function App() {
               </div>
             </motion.div>
 
-            {/* Market Trends */}
+            {/* AI Strategic Analysis */}
+            {result.analysis.strategic_analysis && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="space-y-8"
+              >
+                {/* Market Overview */}
+                <div className="bg-indigo-900 text-white rounded-3xl p-8 shadow-xl relative overflow-hidden">
+                  <div className="absolute top-0 right-0 p-8 opacity-10">
+                    <Zap className="w-32 h-32" />
+                  </div>
+                  <div className="relative z-10">
+                    <div className="flex items-center gap-3 mb-6">
+                      <div className="p-2 bg-indigo-500/30 rounded-lg">
+                        <Gauge className="w-6 h-6 text-indigo-200" />
+                      </div>
+                      <h3 className="text-2xl font-bold">AI Strategic Performance Audit</h3>
+                    </div>
+                    <p className="text-indigo-100 text-lg leading-relaxed max-w-3xl italic">
+                      " {result.analysis.strategic_analysis.market_overview} "
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                  {/* Expansion Opportunities */}
+                  <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8">
+                    <div className="flex items-center gap-3 mb-6">
+                      <div className="p-2 bg-green-50 rounded-lg">
+                        <Lightbulb className="w-6 h-6 text-green-600" />
+                      </div>
+                      <h4 className="text-xl font-bold">Expansion Opportunities</h4>
+                    </div>
+                    <div className="space-y-4">
+                      {result.analysis.strategic_analysis.expansion_strategy.map((item, idx) => (
+                        <div key={idx} className="p-4 bg-slate-50 rounded-xl border border-slate-100">
+                          <p className="font-bold text-slate-900 mb-1">{item.opportunity}</p>
+                          <p className="text-sm text-slate-600">{item.reasoning}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Bid Recommendations */}
+                  <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8">
+                    <div className="flex items-center gap-3 mb-6">
+                      <div className="p-2 bg-blue-50 rounded-lg">
+                        <TrendingUp className="w-6 h-6 text-blue-600" />
+                      </div>
+                      <h4 className="text-xl font-bold">Efficiency & Bidding</h4>
+                    </div>
+                    <div className="space-y-4">
+                      {result.analysis.strategic_analysis.bid_recommendations.map((item, idx) => (
+                        <div key={idx} className="flex gap-4 p-4 border-b border-slate-100 last:border-0">
+                          <div className="flex-shrink-0 mt-1">
+                            <CheckCircle2 className="w-5 h-5 text-blue-500" />
+                          </div>
+                          <div>
+                            <p className="font-bold text-slate-900">{item.cluster}</p>
+                            <p className="text-sm text-slate-700 font-medium my-1">{item.action}</p>
+                            <p className="text-xs text-slate-500">{item.impact}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Long Term Outlook */}
+                <div className="bg-slate-900 text-white rounded-2xl p-8">
+                  <div className="flex items-center gap-3 mb-4">
+                    <Flag className="w-5 h-5 text-indigo-400" />
+                    <h4 className="text-lg font-bold">Long-Term Strategic Outlook</h4>
+                  </div>
+                  <p className="text-slate-300 leading-relaxed">
+                    {result.analysis.strategic_analysis.long_term_outlook}
+                  </p>
+                </div>
+              </motion.div>
+            )}
+
+            {/* Strategic Remarks (if available) - Kept simple if market trends exist */}
             {result.analysis.market_trends && result.analysis.market_trends.length > 0 && (
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
@@ -429,7 +558,7 @@ export default function App() {
               >
                 <h3 className="text-xl font-bold mb-6 flex items-center gap-2">
                   <TrendingUp className="w-6 h-6 text-orange-500" />
-                  Strategic Market Insights
+                  Additional Market Insights
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {result.analysis.market_trends.map((trend, idx) => (
