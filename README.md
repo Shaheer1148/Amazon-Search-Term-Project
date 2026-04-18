@@ -1,20 +1,64 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# Amazon Search Term Analyzer (AI-Powered)
 
-# Run and deploy your AI Studio app
+An enterprise-grade, full-stack Amazon PPC analytics dashboard engineered to automate raw Search Term Report processing and deliver AI-driven strategic insights.
 
-This contains everything you need to run your app locally.
+## Overview
 
-View your app in AI Studio: https://ai.studio/apps/acb45242-d1a5-4d2a-b5b2-f8d76c3a5543
+Analyzing raw `.xlsx` Amazon Advertising Search Term reports is incredibly tedious. This tool ingests those raw reports, processes the data through a custom parsing engine, and visualizes macroeconomic indicators alongside AI-generated optimization strategies.
 
-## Run Locally
+### Key Features
+- **Data Ingestion:** Securely parses raw Amazon Search Term excel datasets (`.xlsx` or `.csv`).
+- **Macro Reporting:** Instantly visualizes core KPIs (Total Ad Spend, Total Sales, Account ACoS).
+- **Intelligent Segmentation:** 
+  - 🎯 **The Winners:** Identifies high-converting targets for expansion.
+  - 🚨 **Bleeding Keywords:** Isolates zero-sale negative targets draining ad spend.
+  - 📊 **Watchlist:** Flags terms approaching dangerous ACoS thresholds.
+- **AI Virtual PPC Strategist:** Powered by Google's Gemini Pro LLM, the system reads your data array to dynamically generate an "AI Strategic Performance Audit" containing context-aware expansion recommendations, bid adjustment logic, and long-term outlook trends.
+- **CSV Export:** One-click download of all processed tables for bulk uploading into Amazon Seller Central.
 
-**Prerequisites:**  Node.js
+## Tech Stack
+- **Frontend App:** React 19, TypeScript
+- **Styling:** Tailwind CSS V4, Lucide React (Iconography), Framer Motion (Animations)
+- **Backend API:** Node.js, Express, Vite
+- **Data Engine:** XLSX (SheetJS), multer
+- **AI Engine:** `@google/genai` (Strict JSON schema definitions)
 
+## Getting Started
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+### Prerequisites
+- Node.js (v18+)
+- A valid Google Gemini API Key
+
+### Installation
+
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/your-username/amazon-search-term-analyzer.git
+   cd amazon-search-term-analyzer
+   ```
+
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
+
+3. **Configure Environment Variables**
+   Create a `.env` file in the root directory based on `.env.example`:
+   ```bash
+   GEMINI_API_KEY="your_api_key_here"  # Or Search_Term_Project="your_api_key_here"
+   ```
+
+4. **Run the Development Server**
+   ```bash
+   npm run dev
+   ```
+   The application will be available at `http://localhost:3000`.
+
+## Usage
+1. Open the application.
+2. Drag and drop your raw Amazon Advertising Excel report. 
+3. Wait for the server to process the raw rows and hand off the arrays to the AI.
+4. Review your macroeconomic metrics and read your AI Strategic Performance Audit! 
+
+## License
+MIT License
